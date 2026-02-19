@@ -1,0 +1,54 @@
+run:
+  timeout: 5m
+  go: "1.21"
+
+linters:
+  enable:
+    - govet        # reports suspicious constructs
+    - errcheck     # checks unchecked errors
+    - staticcheck  # state-of-the-art static analysis
+    - gosimple     # simplification suggestions
+    - ineffassign  # detects ineffective assignments
+    - unused       # checks for unused code
+    - gofmt        # checks formatting
+    - misspell     # catches common spelling mistakes
+    - revive       # drop-in replacement for golint
+    - godot        # checks comment ending with period
+    - gosec        # security checks
+    - noctx        # finds HTTP requests without context
+    - bodyclose    # checks HTTP response body is closed
+    - prealloc     # slice pre-allocation hints
+    - unparam      # reports unused function parameters
+    - dogsled      # checks blank identifier assignments
+
+linters-settings:
+  govet:
+    check-shadowing: true
+  errcheck:
+    check-type-assertions: true
+    check-blank: true
+  gosec:
+    severity: medium
+    confidence: medium
+  revive:
+    rules:
+      - name: exported
+        severity: warning
+      - name: var-naming
+        severity: warning
+      - name: blank-imports
+        severity: error
+  misspell:
+    locale: US
+  godot:
+    scope: declarations
+
+issues:
+  exclude-rules:
+    # Ignore long lines in auto-generated files.
+    - path: _test\.go
+      linters:
+        - gosec
+        - errcheck
+  max-issues-per-linter: 0
+  max-same-issues: 0

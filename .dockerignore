@@ -1,0 +1,8 @@
+.git
+.gitignore
+*.md
+sms_service
+.env
+Makefile
+run.sh
+*.postman_collection.json
