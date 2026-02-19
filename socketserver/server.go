@@ -31,40 +31,36 @@ type Manager struct {
 }
 
 // NewManager creates and configures a Socket.IO server.
-// Origins are validated upstream by the CORS middleware; here we
-// trust all connections that reach this handler.
-func NewManager(allowedOrigins []string) *Manager {
+// All origins are allowed.
+func NewManager() *Manager {
 	m := &Manager{
 		clients: make(map[string]*client),
 	}
 
-	originSet := make(map[string]struct{}, len(allowedOrigins))
-	for _, o := range allowedOrigins {
-		originSet[o] = struct{}{}
-	}
-
-	checkOrigin := func(r *http.Request) bool {
-		origin := r.Header.Get("Origin")
-		if origin == "" {
-			return true
-		}
-		_, ok := originSet[origin]
-		return ok
-	}
+	allowAll := func(r *http.Request) bool { return true }
 
 	srv := socketio.NewServer(&engineio.Options{
 		Transports: []transport.Transport{
 			&polling.Transport{
-				CheckOrigin: checkOrigin,
+				CheckOrigin: allowAll,
 			},
 			&websocket.Transport{
-				CheckOrigin: checkOrigin,
+				CheckOrigin: allowAll,
 			},
 		},
 	})
 
+	// go-socket.io v1.7.0 fires OnConnect twice for the same connection when
+	// the client upgrades from polling → WebSocket transport. Guard with a
+	// duplicate check so the client map and counter stay correct.
 	srv.OnConnect("/", func(s socketio.Conn) error {
 		m.mu.Lock()
+		if _, exists := m.clients[s.ID()]; exists {
+			m.mu.Unlock()
+			log.Printf("[SOCKET] Duplicate OnConnect (transport upgrade) – ignored | id=%s | remote=%s",
+				s.ID(), s.RemoteAddr())
+			return nil
+		}
 		m.clients[s.ID()] = &client{id: s.ID(), busy: false}
 		count := len(m.clients)
 		m.mu.Unlock()
@@ -73,8 +69,19 @@ func NewManager(allowedOrigins []string) *Manager {
 		return nil
 	})
 
+	// OnError is called when a connection error occurs (e.g. i/o timeout after
+	// a client drops silently). In go-socket.io v1.7.0, `s` can be nil for
+	// errors that occur before a connection is fully established, so we guard
+	// against that to avoid a nil-pointer panic crashing the whole process.
 	srv.OnError("/", func(s socketio.Conn, err error) {
-		log.Printf("[SOCKET] Error | id=%s | remote=%s | error=%v",
+		if s == nil {
+			log.Printf("[SOCKET] Error (no connection context) | error=%v", err)
+			return
+		}
+		// "i/o timeout" is a normal event – it means the remote peer dropped
+		// the TCP connection without sending a close frame. The client will
+		// reconnect automatically; no action needed.
+		log.Printf("[SOCKET] Connection error | id=%s | remote=%s | error=%v",
 			s.ID(), s.RemoteAddr(), err)
 	})
 
@@ -96,7 +103,7 @@ func NewManager(allowedOrigins []string) *Manager {
 		}
 		m.mu.Unlock()
 		if ok {
-			log.Printf("[SOCKET] Event 'sended' received, client marked available | id=%s | remote=%s | data=%v",
+			log.Printf("[SOCKET] Event 'sended' – client marked available | id=%s | remote=%s | data=%v",
 				s.ID(), s.RemoteAddr(), data)
 		} else {
 			log.Printf("[SOCKET] Event 'sended' from unknown client | id=%s | remote=%s | data=%v",

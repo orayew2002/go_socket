@@ -8,11 +8,10 @@ import (
 )
 
 type Config struct {
-	Port           string
-	RedisHost      string
-	RedisPort      string
-	RedisPassword  string
-	AllowedOrigins []string
+	Port          string
+	RedisHost     string
+	RedisPort     string
+	RedisPassword string
 }
 
 func Load() *Config {
@@ -40,9 +39,5 @@ func Load() *Config {
 		RedisHost:     redisHost,
 		RedisPort:     redisPort,
 		RedisPassword: os.Getenv("REDIS_PASSWORD"),
-		AllowedOrigins: []string{
-			"http://localhost",
-			"http://95.85.97.202",
-		},
 	}
 }

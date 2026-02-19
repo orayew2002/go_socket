@@ -6,31 +6,20 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// CORS validates the Origin header against the allowlist, mirrors the
-// Node.js cors({origin, credentials: true}) behaviour exactly.
-func CORS(allowedOrigins []string) gin.HandlerFunc {
-	originSet := make(map[string]struct{}, len(allowedOrigins))
-	for _, o := range allowedOrigins {
-		originSet[o] = struct{}{}
-	}
-
+// CORS allows requests from any origin.
+func CORS() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		origin := c.Request.Header.Get("Origin")
-
-		// No origin means same-origin request – always allowed.
 		if origin != "" {
-			if _, ok := originSet[origin]; !ok {
-				c.AbortWithStatusJSON(http.StatusForbidden, gin.H{
-					"message": "Not allowed by CORS",
-				})
-				return
-			}
+			// Echo the request origin so credentials work alongside the wildcard.
 			c.Header("Access-Control-Allow-Origin", origin)
 			c.Header("Access-Control-Allow-Credentials", "true")
-			c.Header("Access-Control-Allow-Headers", "Content-Type, Authorization")
-			c.Header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
-			c.Header("Vary", "Origin")
+		} else {
+			c.Header("Access-Control-Allow-Origin", "*")
 		}
+		c.Header("Access-Control-Allow-Headers", "Content-Type, Authorization")
+		c.Header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+		c.Header("Vary", "Origin")
 
 		// Handle preflight.
 		if c.Request.Method == http.MethodOptions {

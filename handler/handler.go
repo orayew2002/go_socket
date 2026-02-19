@@ -11,15 +11,16 @@ import (
 	"strings"
 	"time"
 
+	"sms_service/socketserver"
+
 	"github.com/gin-gonic/gin"
 	"github.com/redis/go-redis/v9"
-	"sms_service/socketserver"
 )
 
 // Patterns mirror the original Node.js regexes exactly.
 var (
-	phonePattern    = regexp.MustCompile(`^[6][1-5][0-9]{6}$`)
-	sendSMSPattern  = regexp.MustCompile(`^(\+993)?6[1-5]\d{6}`)
+	phonePattern   = regexp.MustCompile(`^[6][1-5][0-9]{6}$`)
+	sendSMSPattern = regexp.MustCompile(`^(\+993)?6[1-5]\d{6}`)
 )
 
 const (
@@ -206,11 +207,7 @@ func (h *Handler) SendSMS(c *gin.Context) {
 		return
 	}
 
-	phone := body.Phone
-	if strings.HasPrefix(phone, "+993") {
-		phone = phone[4:]
-	}
-
+	phone := strings.TrimPrefix(body.Phone, "+993")
 	fullPhone := fmt.Sprintf("+993%s", phone)
 
 	log.Printf("[SEND_SMS] Emitting SMS via socket | ip=%s | phone=%s | message_len=%d", ip, fullPhone, len(body.Message))

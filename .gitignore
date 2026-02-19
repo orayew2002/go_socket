@@ -5,3 +5,4 @@ sms_service
 .claude
 .idea
 .vscode
+requests.http
